@@ -24,10 +24,10 @@ export default function ContactSection() {
 
       await supabase.from('notifications').insert({
         type: 'contact',
-        title: `رسالة جديدة من ${form.name}`,
-        title_en: `New message from ${form.name}`,
-        body: `الخدمة: ${form.service || 'غير محدد'} | الهاتف: ${form.phone}`,
-        reference_id: null,
+        title: `New message from ${form.name}`,
+        title_ar: `رسالة جديدة من ${form.name}`,
+        message: `Service: ${form.service || 'N/A'} | Phone: ${form.phone}`,
+        message_ar: `الخدمة: ${form.service || 'غير محدد'} | الهاتف: ${form.phone}`,
       });
 
       fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLang } from '../../contexts/LanguageContext';
+import { supabase } from '../../lib/supabase';
 import { cn } from '../../lib/utils';
 
 type NavItem = {
@@ -21,7 +22,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { icon: LayoutDashboard, label_ar: 'لوحة التحكم', label_en: 'Dashboard', href: '/admin' },
-  { icon: Calendar, label_ar: 'الحجوزات', label_en: 'Bookings', href: '/admin/bookings', badge: 3 },
+  { icon: Calendar, label_ar: 'الحجوزات', label_en: 'Bookings', href: '/admin/bookings' },
   {
     icon: FileText, label_ar: 'الفواتير', label_en: 'Invoices', href: '/admin/invoices',
     children: [
@@ -57,6 +58,15 @@ const navItems: NavItem[] = [
   { icon: Settings, label_ar: 'الإعدادات', label_en: 'Settings', href: '/admin/settings' },
 ];
 
+type DbNotification = {
+  id: string;
+  title: string;
+  title_ar: string;
+  type: string;
+  is_read: boolean;
+  created_at: string;
+};
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { profile, signOut } = useAuth();
   const { t } = useLang();
@@ -66,6 +76,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<DbNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    supabase
+      .from('notifications')
+      .select('id, title, title_ar, type, is_read, created_at')
+      .order('created_at', { ascending: false })
+      .limit(10)
+      .then(({ data }) => {
+        if (data) {
+          setNotifications(data);
+          setUnreadCount(data.filter((n: DbNotification) => !n.is_read).length);
+        }
+      });
+  }, []);
+
+  const markAllRead = async () => {
+    await supabase.from('notifications').update({ is_read: true }).eq('is_read', false);
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+  };
 
   const toggleExpand = (href: string) => {
     setExpandedItems(prev => prev.includes(href) ? prev.filter(h => h !== href) : [...prev, href]);
@@ -279,7 +311,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 className="relative w-8 h-8 rounded-lg hover:bg-white/5 flex items-center justify-center transition-colors"
               >
                 <Bell className="w-4 h-4 text-gray-400" />
-                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center px-0.5">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </button>
               <AnimatePresence>
                 {notificationsOpen && (
@@ -289,20 +325,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     exit={{ opacity: 0, y: 10 }}
                     className="absolute top-10 right-0 w-80 bg-gray-800 border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden"
                   >
-                    <div className="p-4 border-b border-white/5">
+                    <div className="p-4 border-b border-white/5 flex items-center justify-between">
                       <h3 className="text-sm font-semibold text-white font-arabic">{t('الإشعارات', 'Notifications')}</h3>
+                      {unreadCount > 0 && (
+                        <button onClick={markAllRead} className="text-xs text-amber-400 hover:text-amber-300 font-arabic transition-colors">
+                          {t('تحديد الكل كمقروء', 'Mark all read')}
+                        </button>
+                      )}
                     </div>
-                    <div className="p-2 space-y-1">
-                      {[
-                        { title_ar: 'حجز جديد من أحمد محمد', title_en: 'New booking from Ahmed Mohamed', time: '5m' },
-                        { title_ar: 'فاتورة INV-001 مستحقة الدفع', title_en: 'Invoice INV-001 payment due', time: '1h' },
-                        { title_ar: 'تقييم جديد من عميل', title_en: 'New review from a customer', time: '3h' },
-                      ].map((notif, i) => (
-                        <div key={i} className="flex items-start gap-3 p-2.5 rounded-xl hover:bg-white/5 transition-colors cursor-pointer">
-                          <div className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0 mt-1.5" />
+                    <div className="p-2 space-y-1 max-h-72 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <p className="text-xs text-gray-500 font-arabic text-center py-6">{t('لا توجد إشعارات', 'No notifications')}</p>
+                      ) : notifications.map((notif) => (
+                        <div key={notif.id} className={`flex items-start gap-3 p-2.5 rounded-xl hover:bg-white/5 transition-colors cursor-pointer ${!notif.is_read ? 'bg-amber-500/5' : ''}`}>
+                          <div className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${!notif.is_read ? 'bg-amber-500' : 'bg-gray-600'}`} />
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs text-gray-200 font-arabic truncate">{t(notif.title_ar, notif.title_en)}</p>
-                            <p className="text-xs text-gray-600 mt-0.5">{notif.time}</p>
+                            <p className="text-xs text-gray-200 font-arabic truncate">{notif.title_ar || notif.title}</p>
+                            <p className="text-xs text-gray-600 mt-0.5">
+                              {new Date(notif.created_at).toLocaleString('ar-AE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </p>
                           </div>
                         </div>
                       ))}

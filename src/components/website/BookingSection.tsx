@@ -81,10 +81,10 @@ export default function BookingSection() {
 
       await supabase.from('notifications').insert({
         type: 'booking',
-        title: `حجز جديد من ${form.full_name}`,
-        title_en: `New booking from ${form.full_name}`,
-        body: `التاريخ: ${form.event_date || '—'} | المكان: ${form.venue || '—'} | الخدمة: ${form.service || '—'}`,
-        reference_id: bookingNumber,
+        title: `New booking from ${form.full_name}`,
+        title_ar: `حجز جديد من ${form.full_name}`,
+        message: `التاريخ: ${form.event_date || '—'} | المكان: ${form.venue || '—'} | الخدمة: ${form.service || '—'}`,
+        message_ar: `التاريخ: ${form.event_date || '—'} | المكان: ${form.venue || '—'} | الخدمة: ${form.service || '—'}`,
       });
 
       fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {

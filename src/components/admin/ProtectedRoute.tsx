@@ -27,6 +27,14 @@ export default function ProtectedRoute({ children, requiredRole }: Props) {
     return <Navigate to="/admin/login" replace />;
   }
 
+  // Once profile is loaded, enforce staff-only access.
+  // While profile is still null (loading), we already show the spinner above via `loading`.
+  // If profile loaded but role is customer (or any non-staff role), redirect to home.
+  const STAFF_ROLES = ['super_admin', 'admin', 'manager', 'accountant', 'employee'];
+  if (!loading && profile && !STAFF_ROLES.includes(profile.role)) {
+    return <Navigate to="/" replace />;
+  }
+
   if (requiredRole && profile && !requiredRole.includes(profile.role)) {
     return <Navigate to="/admin" replace />;
   }
