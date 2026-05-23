@@ -1,0 +1,213 @@
+# ENTERPRISE DEVELOPMENT RULES — ALTAHANY SAAS PLATFORM
+
+## 1. CORE PHILOSOPHY
+
+This project is a FULL Enterprise SaaS Platform for Wedding Services (Altahany).
+
+The system is NOT a demo or template.
+It MUST behave like a real production-grade SaaS used by a real company.
+
+Everything generated must be:
+
+* Production-ready
+* Fully functional
+* Database-connected
+* API-driven
+* Scalable
+* Secure
+* Maintainable
+
+NO mockups. NO fake buttons. NO static pages without logic.
+
+---
+
+## 2. UI / UX PRINCIPLES
+
+* Design must be PREMIUM, MODERN, and LUXURY
+* Inspired by Apple-level simplicity + enterprise dashboards
+* Mobile-first responsive design is mandatory
+* Arabic RTL is default, English toggle supported
+* Use Tailwind CSS only
+* Use lucide-react for all icons (NO external icon libraries)
+* Use soft elegant wedding branding (white, gold, soft pink tones)
+* Smooth animations but performance-first
+* Avoid clutter and heavy UI components
+* Every page must feel like a real SaaS dashboard
+
+---
+
+## 3. CODE ARCHITECTURE RULES
+
+* Use clean modular React components
+
+* Use reusable hooks for logic
+
+* Keep API logic separated from UI
+
+* Use proper folder structure:
+  /components
+  /pages
+  /hooks
+  /services
+  /utils
+  /api
+
+* All data MUST come from backend APIs
+
+* No hardcoded values except UI defaults
+
+* Use TypeScript strictly
+
+---
+
+## 4. BACKEND INTEGRATION RULES
+
+* Every feature MUST be connected to real API
+* All CRUD operations must persist in database
+* Use proper REST API structure
+* All forms must submit data to backend
+* Validate all inputs on frontend + backend
+* Handle API errors gracefully
+
+---
+
+## 5. ADMIN PANEL RULES (CRITICAL)
+
+Admin dashboard MUST control EVERYTHING dynamically:
+
+Admin can manage:
+
+* Website content (text, images, sections)
+* Services and packages
+* Wedding halls directory
+* Bookings and customers
+* Invoices and quotations
+* Email templates
+* SEO settings
+* Social media links
+* Ads & banners
+* AI tools settings
+* Notifications system
+* User roles and permissions
+
+Any admin change MUST instantly reflect on frontend.
+
+---
+
+## 6. INVOICE & QUOTATION SYSTEM
+
+Must be fully functional:
+
+* PDF generation
+* Print-ready layout
+* Email sending
+* WhatsApp sharing
+* VAT support (UAE standards)
+* QR code generation
+* Logo, footer, watermark support
+* Multi-language (Arabic/English)
+
+No fake PDF or static templates allowed.
+
+---
+
+## 7. EMAIL SYSTEM
+
+* Must support SMTP integration
+* Must send real emails (no simulation)
+* Admin must control SMTP settings
+* Email templates must be editable
+* Logs must be stored in database
+
+---
+
+## 8. MEDIA SYSTEM
+
+* Upload images, videos, audio
+* Optimize automatically (WebP preferred)
+* Lazy loading required
+* Drag & drop gallery management
+* Watermark system supported
+* CDN-ready structure
+
+---
+
+## 9. PERFORMANCE RULES
+
+* Pages must load fast (<2s target)
+* Optimize bundle size
+* Avoid unnecessary rerenders
+* Use lazy loading for heavy components
+* SEO optimized structure required
+
+---
+
+## 10. SECURITY RULES
+
+* JWT authentication required
+* Role-based access control (RBAC)
+* Input validation on all forms
+* Protect APIs from unauthorized access
+* Secure file uploads
+* Rate limiting support
+
+---
+
+## 11. SEO REQUIREMENTS
+
+* Meta tags on every page
+* OpenGraph + Twitter cards
+* Sitemap.xml
+* Robots.txt
+* Structured JSON-LD data
+* SEO-friendly URLs
+
+---
+
+## 12. DEVELOPMENT BEHAVIOR
+
+When building features:
+
+* Always complete full workflow (UI + API + DB)
+* Never leave feature half implemented
+* Always connect frontend to backend
+* Always ensure database persistence
+* Always ensure admin control exists
+* Always test logical flow of feature
+
+---
+
+## 13. TECH STACK RULES
+
+* React + TypeScript only
+* Tailwind CSS only for styling
+* Node.js backend (Express or Hono)
+* MySQL database
+* No unnecessary libraries
+* No UI frameworks like MUI, Ant, Bootstrap
+
+---
+
+## 14. FINAL SYSTEM GOAL
+
+This platform must feel like:
+
+* Enterprise SaaS platform
+* Wedding industry CRM + ERP system
+* Luxury premium product
+* Real production system used by companies
+
+NOT a template. NOT a demo.
+
+---
+
+## 15. NON-NEGOTIABLE RULE
+
+If any feature is added:
+You MUST ensure:
+
+* It is fully functional
+* It is connected to database
+* It is accessible from admin panel
+* It is integrated with frontend
+* It is production safe

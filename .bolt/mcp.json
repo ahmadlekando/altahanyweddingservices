@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "github": {
+      "enabled": true
+    },
+    "miro": {
+      "enabled": true
+    },
+    "notion": {
+      "enabled": true
+    },
+    "context7": {
+      "enabled": true
+    }
+  }
+}
