@@ -66,7 +66,7 @@ export default function BookingSection() {
     setLoading(true);
     try {
       const bookingNumber = `BKG${Date.now()}`;
-      const { data: booking, error: bookingError } = await supabase.from('bookings').insert({
+      const { error: bookingError } = await supabase.from('bookings').insert({
         booking_number: bookingNumber,
         customer_name: form.full_name,
         customer_phone: form.phone,
@@ -77,7 +77,7 @@ export default function BookingSection() {
         status: 'pending',
         notes: form.special_requests,
         total_amount: 0,
-      }).select().single();
+      });
 
       if (bookingError) {
         console.error('Supabase Error Details (booking insert):', bookingError?.message, bookingError?.details, bookingError?.hint, bookingError?.code);
@@ -85,7 +85,7 @@ export default function BookingSection() {
         return;
       }
 
-      console.log('Booking saved successfully:', booking?.id, booking?.booking_number);
+      console.log('Booking saved successfully:', bookingNumber);
 
       // Fire-and-forget: notification + email — failures must not block the user confirmation
       supabase.from('notifications').insert({
