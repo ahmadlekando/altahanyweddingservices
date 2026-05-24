@@ -41,9 +41,15 @@ export default function TestimonialsPage() {
 
   async function fetchTestimonials() {
     setLoading(true);
-    const { data } = await supabase.from('testimonials').select('*').order('sort_order');
-    if (data) setTestimonials(data as Testimonial[]);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase.from('testimonials').select('*').order('sort_order');
+      if (error) console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
+      setTestimonials((data ?? []) as Testimonial[]);
+    } catch (err) {
+      console.error('fetchTestimonials unexpected error:', err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function openNew() {
@@ -73,12 +79,20 @@ export default function TestimonialsPage() {
     setSaving(true);
     try {
       if (editing) {
-        await supabase.from('testimonials').update(form).eq('id', editing.id);
+        const { error } = await supabase.from('testimonials').update(form).eq('id', editing.id).select();
+        if (error) console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
       } else {
-        await supabase.from('testimonials').insert(form);
+        const { data: inserted, error } = await supabase.from('testimonials').insert(form).select().single();
+        if (error) {
+          console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
+        } else {
+          console.log('Testimonial inserted successfully:', inserted?.id);
+        }
       }
       setShowForm(false);
       await fetchTestimonials();
+    } catch (err) {
+      console.error('handleSave testimonial unexpected error:', err);
     } finally {
       setSaving(false);
     }
@@ -86,14 +100,25 @@ export default function TestimonialsPage() {
 
   async function handleDelete(id: string) {
     setDeleting(id);
-    await supabase.from('testimonials').delete().eq('id', id);
-    setTestimonials(prev => prev.filter(t => t.id !== id));
-    setDeleting(null);
+    try {
+      const { error } = await supabase.from('testimonials').delete().eq('id', id);
+      if (error) console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
+      else setTestimonials(prev => prev.filter(t => t.id !== id));
+    } catch (err) {
+      console.error('handleDelete testimonial unexpected error:', err);
+    } finally {
+      setDeleting(null);
+    }
   }
 
   async function togglePublic(item: Testimonial) {
-    await supabase.from('testimonials').update({ is_public: !item.is_public }).eq('id', item.id);
-    setTestimonials(prev => prev.map(t => t.id === item.id ? { ...t, is_public: !t.is_public } : t));
+    try {
+      const { error } = await supabase.from('testimonials').update({ is_public: !item.is_public }).eq('id', item.id).select();
+      if (error) console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
+      else setTestimonials(prev => prev.map(t => t.id === item.id ? { ...t, is_public: !t.is_public } : t));
+    } catch (err) {
+      console.error('togglePublic unexpected error:', err);
+    }
   }
 
   const inputCls = 'w-full px-3 py-2.5 bg-gray-800 border border-white/10 rounded-xl text-sm text-gray-300 focus:outline-none focus:border-amber-500/50 transition-colors font-arabic';

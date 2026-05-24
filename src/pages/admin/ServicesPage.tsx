@@ -48,9 +48,15 @@ export default function ServicesPage() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from('services').select('*').order('sort_order').order('created_at', { ascending: false });
-    if (data) setServices(data);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase.from('services').select('*').order('sort_order').order('created_at', { ascending: false });
+      if (error) console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
+      setServices(data ?? []);
+    } catch (err) {
+      console.error('load services unexpected error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const openNew = () => {
@@ -70,12 +76,20 @@ export default function ServicesPage() {
     setSaving(true);
     try {
       if (editing) {
-        await supabase.from('services').update({ ...form, updated_at: new Date().toISOString() } as any).eq('id', editing.id);
+        const { error } = await supabase.from('services').update({ ...form, updated_at: new Date().toISOString() } as any).eq('id', editing.id).select();
+        if (error) console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
       } else {
-        await supabase.from('services').insert(form);
+        const { data: inserted, error } = await supabase.from('services').insert(form).select().single();
+        if (error) {
+          console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
+        } else {
+          console.log('Service inserted successfully:', inserted?.id);
+        }
       }
       await load();
       setShowForm(false);
+    } catch (err) {
+      console.error('handleSave service unexpected error:', err);
     } finally {
       setSaving(false);
     }
@@ -83,8 +97,13 @@ export default function ServicesPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm(t('هل أنت متأكد من الحذف؟', 'Are you sure?'))) return;
-    await supabase.from('services').delete().eq('id', id);
-    setServices(prev => prev.filter(s => s.id !== id));
+    try {
+      const { error } = await supabase.from('services').delete().eq('id', id);
+      if (error) console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
+      else setServices(prev => prev.filter(s => s.id !== id));
+    } catch (err) {
+      console.error('handleDelete service unexpected error:', err);
+    }
   };
 
   const Input = ({ label_ar, label_en, field, type = 'text' }: any) => (

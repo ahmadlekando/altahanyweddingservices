@@ -106,7 +106,7 @@ export default function NewInvoicePage() {
     setSaving(true);
     try {
       const invoiceNumber = `INV${Date.now()}`;
-      const { data: inv, error } = await supabase.from('invoices').insert({
+      const { data: inv, error: invError } = await supabase.from('invoices').insert({
         invoice_number: invoiceNumber,
         ...invoice,
         subtotal,
@@ -118,20 +118,31 @@ export default function NewInvoicePage() {
         created_by: profile?.id,
       }).select().single();
 
+      if (invError) {
+        console.error('Supabase Error Details:', invError?.message, invError?.details, invError?.hint, invError?.code);
+        return;
+      }
+
       if (inv) {
-        await supabase.from('invoice_items').insert(
+        const { error: itemsError } = await supabase.from('invoice_items').insert(
           items.map((item, i) => ({
             invoice_id: inv.id,
             ...item,
             total: getItemTotal(item),
             sort_order: i,
           }))
-        );
+        ).select();
+        if (itemsError) {
+          console.error('Supabase Error Details (invoice_items):', itemsError?.message, itemsError?.details, itemsError?.hint, itemsError?.code);
+        }
         if (status === 'sent') {
           await sendEmailNotification(inv);
         }
+        console.log('Invoice saved successfully:', inv.id, inv.invoice_number);
         navigate('/admin/invoices');
       }
+    } catch (err) {
+      console.error('handleSave invoice unexpected error:', err);
     } finally {
       setSaving(false);
     }

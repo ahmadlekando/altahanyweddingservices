@@ -65,9 +65,15 @@ export default function QuotationsPage() {
 
   async function fetchQuotations() {
     setLoading(true);
-    const { data } = await supabase.from('quotations').select('*').order('created_at', { ascending: false });
-    if (data) setQuotations(data as Quotation[]);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase.from('quotations').select('*').order('created_at', { ascending: false });
+      if (error) console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
+      setQuotations((data ?? []) as Quotation[]);
+    } catch (err) {
+      console.error('fetchQuotations unexpected error:', err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function calcTotals() {
@@ -109,57 +115,77 @@ export default function QuotationsPage() {
   async function handleSave() {
     if (!form.customer_name.trim()) return;
     setSaving(true);
-    const { subtotal, vat_amount, total } = calcTotals();
-    const payload = {
-      customer_name: form.customer_name,
-      customer_email: form.customer_email || null,
-      customer_phone: form.customer_phone || null,
-      event_date: form.event_date || null,
-      event_type: form.event_type || null,
-      valid_until: form.valid_until || null,
-      issue_date: form.issue_date,
-      vat_percent: Number(form.vat_percent),
-      discount_percent: Number(form.discount_percent),
-      currency: form.currency,
-      notes: form.notes || null,
-      status: form.status,
-      subtotal,
-      vat_amount,
-      total,
-    };
-    let quotId: string;
-    if (editing) {
-      await supabase.from('quotations').update(payload).eq('id', editing.id);
-      quotId = editing.id;
-      await supabase.from('quotation_items').delete().eq('quotation_id', quotId);
-    } else {
-      const num = `QT-${Date.now().toString().slice(-6)}`;
-      const { data: newQ } = await supabase.from('quotations').insert({ ...payload, quotation_number: num }).select().maybeSingle();
-      quotId = newQ?.id;
+    try {
+      const { subtotal, vat_amount, total } = calcTotals();
+      const payload = {
+        customer_name: form.customer_name,
+        customer_email: form.customer_email || null,
+        customer_phone: form.customer_phone || null,
+        event_date: form.event_date || null,
+        event_type: form.event_type || null,
+        valid_until: form.valid_until || null,
+        issue_date: form.issue_date,
+        vat_percent: Number(form.vat_percent),
+        discount_percent: Number(form.discount_percent),
+        currency: form.currency,
+        notes: form.notes || null,
+        status: form.status,
+        subtotal,
+        vat_amount,
+        total,
+      };
+      let quotId: string | undefined;
+      if (editing) {
+        const { error } = await supabase.from('quotations').update(payload).eq('id', editing.id).select();
+        if (error) console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
+        quotId = editing.id;
+        await supabase.from('quotation_items').delete().eq('quotation_id', quotId);
+      } else {
+        const num = `QT-${Date.now().toString().slice(-6)}`;
+        const { data: newQ, error } = await supabase.from('quotations').insert({ ...payload, quotation_number: num }).select().maybeSingle();
+        if (error) {
+          console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
+        } else {
+          console.log('Quotation inserted successfully:', newQ?.id, newQ?.quotation_number);
+        }
+        quotId = newQ?.id;
+      }
+      if (quotId) {
+        const itemRows = items.filter(i => i.description.trim()).map((i, idx) => ({
+          quotation_id: quotId,
+          description: i.description,
+          quantity: i.quantity,
+          unit_price: i.unit_price,
+          total: i.quantity * i.unit_price,
+          sort_order: idx,
+        }));
+        if (itemRows.length > 0) {
+          const { error: itemsErr } = await supabase.from('quotation_items').insert(itemRows).select();
+          if (itemsErr) console.error('Supabase Error Details (quotation_items):', itemsErr?.message, itemsErr?.details, itemsErr?.hint, itemsErr?.code);
+        }
+      }
+      setShowForm(false);
+      fetchQuotations();
+    } catch (err) {
+      console.error('handleSave quotation unexpected error:', err);
+    } finally {
+      setSaving(false);
     }
-    if (quotId) {
-      const itemRows = items.filter(i => i.description.trim()).map((i, idx) => ({
-        quotation_id: quotId,
-        description: i.description,
-        quantity: i.quantity,
-        unit_price: i.unit_price,
-        total: i.quantity * i.unit_price,
-        sort_order: idx,
-      }));
-      if (itemRows.length > 0) await supabase.from('quotation_items').insert(itemRows);
-    }
-    setSaving(false);
-    setShowForm(false);
-    fetchQuotations();
   }
 
   async function handleDelete(id: string) {
     if (!confirm(t('هل أنت متأكد من الحذف؟', 'Are you sure?'))) return;
     setDeleting(id);
-    await supabase.from('quotation_items').delete().eq('quotation_id', id);
-    await supabase.from('quotations').delete().eq('id', id);
-    setDeleting(null);
-    fetchQuotations();
+    try {
+      await supabase.from('quotation_items').delete().eq('quotation_id', id);
+      const { error } = await supabase.from('quotations').delete().eq('id', id);
+      if (error) console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
+      else fetchQuotations();
+    } catch (err) {
+      console.error('handleDelete quotation unexpected error:', err);
+    } finally {
+      setDeleting(null);
+    }
   }
 
   async function handleDownloadPDF(q: Quotation) {

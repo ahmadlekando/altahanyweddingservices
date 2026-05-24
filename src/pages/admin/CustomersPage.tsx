@@ -49,9 +49,15 @@ export default function CustomersPage() {
 
   async function fetchCustomers() {
     setLoading(true);
-    const { data } = await supabase.from('customers').select('*').order('created_at', { ascending: false });
-    if (data) setCustomers(data as Customer[]);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase.from('customers').select('*').order('created_at', { ascending: false });
+      if (error) console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
+      setCustomers((data ?? []) as Customer[]);
+    } catch (err) {
+      console.error('fetchCustomers unexpected error:', err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function openNew() {
@@ -79,34 +85,51 @@ export default function CustomersPage() {
   async function handleSave() {
     if (!form.full_name.trim()) return;
     setSaving(true);
-    const tags = form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
-    const payload = {
-      full_name: form.full_name,
-      email: form.email || null,
-      phone: form.phone || null,
-      whatsapp: form.whatsapp || null,
-      category: form.category,
-      nationality: form.nationality || null,
-      address: form.address || null,
-      notes: form.notes || null,
-      tags,
-    };
-    if (editing) {
-      await supabase.from('customers').update(payload).eq('id', editing.id);
-    } else {
-      await supabase.from('customers').insert(payload);
+    try {
+      const tags = form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+      const payload = {
+        full_name: form.full_name,
+        email: form.email || null,
+        phone: form.phone || null,
+        whatsapp: form.whatsapp || null,
+        category: form.category,
+        nationality: form.nationality || null,
+        address: form.address || null,
+        notes: form.notes || null,
+        tags,
+      };
+      if (editing) {
+        const { error } = await supabase.from('customers').update(payload).eq('id', editing.id).select();
+        if (error) console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
+      } else {
+        const { data: inserted, error } = await supabase.from('customers').insert(payload).select().single();
+        if (error) {
+          console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
+        } else {
+          console.log('Customer inserted successfully:', inserted?.id);
+        }
+      }
+      setShowForm(false);
+      fetchCustomers();
+    } catch (err) {
+      console.error('handleSave customer unexpected error:', err);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    setShowForm(false);
-    fetchCustomers();
   }
 
   async function handleDelete(id: string) {
     if (!confirm(t('هل أنت متأكد من الحذف؟', 'Are you sure you want to delete?'))) return;
     setDeleting(id);
-    await supabase.from('customers').delete().eq('id', id);
-    setDeleting(null);
-    fetchCustomers();
+    try {
+      const { error } = await supabase.from('customers').delete().eq('id', id);
+      if (error) console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
+      else fetchCustomers();
+    } catch (err) {
+      console.error('handleDelete customer unexpected error:', err);
+    } finally {
+      setDeleting(null);
+    }
   }
 
   const filtered = customers.filter(c => {

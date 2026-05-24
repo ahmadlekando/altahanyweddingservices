@@ -14,20 +14,31 @@ export default function ContactSection() {
     e.preventDefault();
     setLoading(true);
     try {
-      await supabase.from('contact_submissions').insert({
+      const { data: submission, error: subError } = await supabase.from('contact_submissions').insert({
         name: form.name,
         phone: form.phone,
         email: form.email || null,
         service: form.service || null,
         message: form.message || null,
-      });
+      }).select().single();
 
-      await supabase.from('notifications').insert({
+      if (subError) {
+        console.error('Supabase Error Details (contact_submissions insert):', subError?.message, subError?.details, subError?.hint, subError?.code);
+        setLoading(false);
+        return;
+      }
+
+      console.log('Contact submission saved successfully:', submission?.id);
+
+      // Fire-and-forget: notification + email
+      supabase.from('notifications').insert({
         type: 'contact',
         title: `New message from ${form.name}`,
         title_ar: `رسالة جديدة من ${form.name}`,
         message: `Service: ${form.service || 'N/A'} | Phone: ${form.phone}`,
         message_ar: `الخدمة: ${form.service || 'غير محدد'} | الهاتف: ${form.phone}`,
+      }).then(({ error }) => {
+        if (error) console.error('Supabase Error Details (notification insert):', error?.message, error?.details, error?.hint, error?.code);
       });
 
       fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
@@ -42,13 +53,12 @@ export default function ContactSection() {
           html: `<div dir="rtl" style="font-family:Arial,sans-serif;padding:20px;"><h2 style="color:#d4a439;">رسالة جديدة من موقع التهاني</h2><table style="width:100%;border-collapse:collapse;"><tr><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">الاسم</td><td style="padding:8px;border-bottom:1px solid #eee;">${form.name}</td></tr><tr><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">الهاتف</td><td style="padding:8px;border-bottom:1px solid #eee;">${form.phone}</td></tr><tr><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">البريد</td><td style="padding:8px;border-bottom:1px solid #eee;">${form.email || '—'}</td></tr><tr><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">الخدمة</td><td style="padding:8px;border-bottom:1px solid #eee;">${form.service || '—'}</td></tr><tr><td style="padding:8px;font-weight:bold;">الرسالة</td><td style="padding:8px;">${form.message || '—'}</td></tr></table></div>`,
           log_type: 'contact',
         }),
-      }).catch(() => {});
+      }).catch(err => console.error('send-email fetch error:', err));
 
       setSent(true);
       setForm({ name: '', phone: '', email: '', service: '', message: '' });
-    } catch (_) {
-      // Still show success to user even if notification fails
-      setSent(true);
+    } catch (err) {
+      console.error('handleSubmit contact unexpected error:', err);
     } finally {
       setLoading(false);
     }

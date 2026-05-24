@@ -45,9 +45,17 @@ export default function BookingsPage() {
 
   async function fetchBookings() {
     setLoading(true);
-    const { data } = await supabase.from('bookings').select('*').order('created_at', { ascending: false });
-    if (data) setBookings(data as Booking[]);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase.from('bookings').select('*').order('created_at', { ascending: false });
+      if (error) {
+        console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
+      }
+      setBookings((data ?? []) as Booking[]);
+    } catch (err) {
+      console.error('fetchBookings unexpected error:', err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function openNew() {
@@ -77,36 +85,53 @@ export default function BookingsPage() {
   async function handleSave() {
     if (!form.customer_name.trim()) return;
     setSaving(true);
-    const payload = {
-      customer_name: form.customer_name,
-      customer_phone: form.customer_phone,
-      customer_email: form.customer_email,
-      event_date: form.event_date || null,
-      event_type: form.event_type,
-      hall_name: form.hall_name,
-      guests_count: form.guests_count ? Number(form.guests_count) : null,
-      total_amount: form.total_amount ? Number(form.total_amount) : 0,
-      paid_amount: form.paid_amount ? Number(form.paid_amount) : 0,
-      status: form.status,
-      notes: form.notes,
-    };
-    if (editing) {
-      await supabase.from('bookings').update(payload).eq('id', editing.id);
-    } else {
-      const num = `BK-${Date.now().toString().slice(-6)}`;
-      await supabase.from('bookings').insert({ ...payload, booking_number: num });
+    try {
+      const payload = {
+        customer_name: form.customer_name,
+        customer_phone: form.customer_phone,
+        customer_email: form.customer_email,
+        event_date: form.event_date || null,
+        event_type: form.event_type,
+        hall_name: form.hall_name,
+        guests_count: form.guests_count ? Number(form.guests_count) : null,
+        total_amount: form.total_amount ? Number(form.total_amount) : 0,
+        paid_amount: form.paid_amount ? Number(form.paid_amount) : 0,
+        status: form.status,
+        notes: form.notes,
+      };
+      if (editing) {
+        const { error } = await supabase.from('bookings').update(payload).eq('id', editing.id).select();
+        if (error) console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
+      } else {
+        const num = `BK-${Date.now().toString().slice(-6)}`;
+        const { data: inserted, error } = await supabase.from('bookings').insert({ ...payload, booking_number: num }).select().single();
+        if (error) {
+          console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
+        } else {
+          console.log('Booking inserted successfully:', inserted?.id, inserted?.booking_number);
+        }
+      }
+      setShowForm(false);
+      fetchBookings();
+    } catch (err) {
+      console.error('handleSave booking unexpected error:', err);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    setShowForm(false);
-    fetchBookings();
   }
 
   async function handleDelete(id: string) {
     if (!confirm(t('هل أنت متأكد من الحذف؟', 'Are you sure you want to delete this booking?'))) return;
     setDeleting(id);
-    await supabase.from('bookings').delete().eq('id', id);
-    setDeleting(null);
-    fetchBookings();
+    try {
+      const { error } = await supabase.from('bookings').delete().eq('id', id);
+      if (error) console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
+      else fetchBookings();
+    } catch (err) {
+      console.error('handleDelete booking unexpected error:', err);
+    } finally {
+      setDeleting(null);
+    }
   }
 
   const filtered = bookings.filter(b => {

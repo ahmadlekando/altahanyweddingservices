@@ -66,7 +66,7 @@ export default function BookingSection() {
     setLoading(true);
     try {
       const bookingNumber = `BKG${Date.now()}`;
-      await supabase.from('bookings').insert({
+      const { data: booking, error: bookingError } = await supabase.from('bookings').insert({
         booking_number: bookingNumber,
         customer_name: form.full_name,
         customer_phone: form.phone,
@@ -77,14 +77,25 @@ export default function BookingSection() {
         status: 'pending',
         notes: form.special_requests,
         total_amount: 0,
-      });
+      }).select().single();
 
-      await supabase.from('notifications').insert({
+      if (bookingError) {
+        console.error('Supabase Error Details (booking insert):', bookingError?.message, bookingError?.details, bookingError?.hint, bookingError?.code);
+        setLoading(false);
+        return;
+      }
+
+      console.log('Booking saved successfully:', booking?.id, booking?.booking_number);
+
+      // Fire-and-forget: notification + email — failures must not block the user confirmation
+      supabase.from('notifications').insert({
         type: 'booking',
         title: `New booking from ${form.full_name}`,
         title_ar: `حجز جديد من ${form.full_name}`,
-        message: `التاريخ: ${form.event_date || '—'} | المكان: ${form.venue || '—'} | الخدمة: ${form.service || '—'}`,
+        message: `Date: ${form.event_date || '—'} | Venue: ${form.venue || '—'} | Service: ${form.service || '—'}`,
         message_ar: `التاريخ: ${form.event_date || '—'} | المكان: ${form.venue || '—'} | الخدمة: ${form.service || '—'}`,
+      }).then(({ error }) => {
+        if (error) console.error('Supabase Error Details (notification insert):', error?.message, error?.details, error?.hint, error?.code);
       });
 
       fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
@@ -100,11 +111,11 @@ export default function BookingSection() {
           log_type: 'booking',
           reference_id: bookingNumber,
         }),
-      }).catch(() => {});
+      }).catch(err => console.error('send-email fetch error:', err));
 
       setDone(true);
-    } catch {
-      setDone(true);
+    } catch (err) {
+      console.error('handleSubmit booking unexpected error:', err);
     } finally {
       setLoading(false);
     }

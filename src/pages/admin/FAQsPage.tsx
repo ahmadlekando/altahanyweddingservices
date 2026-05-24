@@ -34,9 +34,15 @@ export default function FAQsPage() {
 
   async function fetchFAQs() {
     setLoading(true);
-    const { data } = await supabase.from('faqs').select('*').order('sort_order');
-    if (data) setFaqs(data as FAQ[]);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase.from('faqs').select('*').order('sort_order');
+      if (error) console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
+      setFaqs((data ?? []) as FAQ[]);
+    } catch (err) {
+      console.error('fetchFAQs unexpected error:', err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function openNew() {
@@ -63,12 +69,20 @@ export default function FAQsPage() {
     setSaving(true);
     try {
       if (editing) {
-        await supabase.from('faqs').update({ ...form, updated_at: new Date().toISOString() }).eq('id', editing.id);
+        const { error } = await supabase.from('faqs').update({ ...form, updated_at: new Date().toISOString() }).eq('id', editing.id).select();
+        if (error) console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
       } else {
-        await supabase.from('faqs').insert(form);
+        const { data: inserted, error } = await supabase.from('faqs').insert(form).select().single();
+        if (error) {
+          console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
+        } else {
+          console.log('FAQ inserted successfully:', inserted?.id);
+        }
       }
       setShowForm(false);
       await fetchFAQs();
+    } catch (err) {
+      console.error('handleSave FAQ unexpected error:', err);
     } finally {
       setSaving(false);
     }
@@ -76,9 +90,15 @@ export default function FAQsPage() {
 
   async function handleDelete(id: string) {
     setDeleting(id);
-    await supabase.from('faqs').delete().eq('id', id);
-    setFaqs(prev => prev.filter(f => f.id !== id));
-    setDeleting(null);
+    try {
+      const { error } = await supabase.from('faqs').delete().eq('id', id);
+      if (error) console.error('Supabase Error Details:', error?.message, error?.details, error?.hint, error?.code);
+      else setFaqs(prev => prev.filter(f => f.id !== id));
+    } catch (err) {
+      console.error('handleDelete FAQ unexpected error:', err);
+    } finally {
+      setDeleting(null);
+    }
   }
 
   async function toggleActive(faq: FAQ) {
