@@ -60,12 +60,14 @@ export default function BlogPage() {
   const [form, setForm] = useState(emptyPost());
   const [saving, setSaving] = useState(false);
   const [tagInput, setTagInput] = useState('');
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => { load(); }, []);
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
+    if (error) console.error('Posts load error:', error.message, error.details);
     if (data) setPosts(data);
     setLoading(false);
   };
@@ -87,13 +89,16 @@ export default function BlogPage() {
   const handleSave = async () => {
     if (!form.title) return;
     setSaving(true);
+    setSaveError(null);
     try {
       const slug = form.slug || slugify(form.title);
       const payload = { ...form, slug };
       if (editing) {
-        await supabase.from('posts').update({ ...payload, updated_at: new Date().toISOString() } as any).eq('id', editing.id);
+        const { error } = await supabase.from('posts').update({ ...payload, updated_at: new Date().toISOString() } as any).eq('id', editing.id);
+        if (error) { setSaveError(error.message); return; }
       } else {
-        await supabase.from('posts').insert(payload as any);
+        const { error } = await supabase.from('posts').insert(payload as any);
+        if (error) { setSaveError(error.message); return; }
       }
       await load();
       setShowForm(false);
@@ -292,13 +297,20 @@ export default function BlogPage() {
               </div>
             </div>
 
-            <div className="flex gap-3 p-5 border-t border-white/5">
-              <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 bg-gray-800 text-gray-300 rounded-xl text-sm font-arabic border border-white/10 hover:bg-gray-700 transition-colors">{t('إلغاء', 'Cancel')}</button>
-              <button onClick={handleSave} disabled={saving || !form.title}
-                className="flex-1 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-arabic hover:bg-amber-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
-                <Save className="w-4 h-4" />
-                {saving ? t('جاري الحفظ...', 'Saving...') : t('حفظ', 'Save')}
-              </button>
+            <div className="flex gap-3 p-5 border-t border-white/5 flex-col">
+              {saveError && (
+                <div className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 font-arabic">
+                  {t('خطأ:', 'Error:')} {saveError}
+                </div>
+              )}
+              <div className="flex gap-3">
+                <button onClick={() => { setShowForm(false); setSaveError(null); }} className="flex-1 py-2.5 bg-gray-800 text-gray-300 rounded-xl text-sm font-arabic border border-white/10 hover:bg-gray-700 transition-colors">{t('إلغاء', 'Cancel')}</button>
+                <button onClick={handleSave} disabled={saving || !form.title}
+                  className="flex-1 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-arabic hover:bg-amber-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+                  <Save className="w-4 h-4" />
+                  {saving ? t('جاري الحفظ...', 'Saving...') : t('حفظ', 'Save')}
+                </button>
+              </div>
             </div>
           </div>
         </div>

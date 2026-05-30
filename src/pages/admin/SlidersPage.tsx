@@ -52,10 +52,12 @@ export default function SlidersPage() {
   const [form, setForm] = useState<Omit<Slider, 'id' | 'created_at'>>(DEFAULT_SLIDER());
   const [saving, setSaving] = useState(false);
   const [previewIdx, setPreviewIdx] = useState(0);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from('sliders').select('*').order('sort_order').order('created_at');
+    const { data, error } = await supabase.from('sliders').select('*').order('sort_order').order('created_at');
+    if (error) console.error('Sliders load error:', error.message, error.details);
     if (data) setSliders(data);
     setLoading(false);
   };
@@ -76,13 +78,16 @@ export default function SlidersPage() {
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError(null);
     const payload = { ...form, updated_at: new Date().toISOString() };
     if (editing?.id) {
-      const { data } = await supabase.from('sliders').update(payload).eq('id', editing.id).select().maybeSingle();
-      if (data) setSliders(prev => prev.map(s => s.id === editing.id ? data : s));
+      const { error } = await supabase.from('sliders').update(payload).eq('id', editing.id);
+      if (error) { setSaveError(error.message); setSaving(false); return; }
+      await load();
     } else {
-      const { data } = await supabase.from('sliders').insert(payload).select().maybeSingle();
-      if (data) setSliders(prev => [...prev, data]);
+      const { error } = await supabase.from('sliders').insert(payload);
+      if (error) { setSaveError(error.message); setSaving(false); return; }
+      await load();
     }
     setSaving(false);
     setModalOpen(false);
@@ -398,21 +403,28 @@ export default function SlidersPage() {
                 </div>
               </div>
 
-              <div className="flex gap-3 p-5 border-t border-white/5">
-                <button
-                  onClick={() => setModalOpen(false)}
-                  className="flex-1 px-4 py-2.5 bg-gray-800 text-gray-300 rounded-xl text-sm font-arabic hover:bg-gray-700 transition-colors"
-                >
-                  {t('إلغاء', 'Cancel')}
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-arabic font-semibold hover:bg-amber-600 transition-colors disabled:opacity-50"
-                >
-                  <Save className="w-4 h-4" />
-                  {saving ? t('جاري الحفظ...', 'Saving...') : t('حفظ', 'Save')}
-                </button>
+              <div className="flex gap-3 p-5 border-t border-white/5 flex-col">
+                {saveError && (
+                  <div className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 font-arabic">
+                    {t('خطأ:', 'Error:')} {saveError}
+                  </div>
+                )}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => { setModalOpen(false); setSaveError(null); }}
+                    className="flex-1 px-4 py-2.5 bg-gray-800 text-gray-300 rounded-xl text-sm font-arabic hover:bg-gray-700 transition-colors"
+                  >
+                    {t('إلغاء', 'Cancel')}
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-arabic font-semibold hover:bg-amber-600 transition-colors disabled:opacity-50"
+                  >
+                    <Save className="w-4 h-4" />
+                    {saving ? t('جاري الحفظ...', 'Saving...') : t('حفظ', 'Save')}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>

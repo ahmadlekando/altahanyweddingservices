@@ -138,7 +138,7 @@ export default function MediaPage() {
         const { data: publicUrlData } = supabase.storage.from('media').getPublicUrl(storagePath);
         const fileUrl = publicUrlData.publicUrl;
 
-        const { data: mediaRecord } = await supabase.from('media').insert({
+        const { data: mediaRecord, error: mediaInsertErr } = await supabase.from('media').insert({
           filename,
           original_name: file.name,
           file_url: fileUrl,
@@ -153,8 +153,13 @@ export default function MediaPage() {
           is_public: true,
         }).select().maybeSingle();
 
+        if (mediaInsertErr) throw mediaInsertErr;
+
         if (mediaRecord) {
           setItems(prev => [mediaRecord, ...prev]);
+        } else {
+          // SELECT policy may have blocked read-back — refresh full list
+          await load();
         }
 
         setUploads(prev => prev.map(u => u.id === job.id ? { ...u, progress: 100, status: 'done' } : u));

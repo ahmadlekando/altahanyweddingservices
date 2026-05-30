@@ -56,6 +56,7 @@ export default function SeoPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [keywordInput, setKeywordInput] = useState('');
   const [sitemapStatus, setSitemapStatus] = useState<'idle' | 'generating' | 'done' | 'error'>('idle');
   const [globalSettings, setGlobalSettings] = useState({ site_url: '', robots_txt: '' });
@@ -87,6 +88,7 @@ export default function SeoPage() {
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError(null);
     const payload = {
       page: selected.page,
       title: selected.title,
@@ -103,10 +105,12 @@ export default function SeoPage() {
 
     const existing = entries.find(e => e.page === selected.page);
     if (existing?.id) {
-      await supabase.from('seo_settings').update(payload).eq('id', existing.id);
+      const { error } = await supabase.from('seo_settings').update(payload).eq('id', existing.id);
+      if (error) { setSaveError(error.message); setSaving(false); return; }
       setEntries(prev => prev.map(e => e.page === selected.page ? { ...e, ...payload } : e));
     } else {
-      const { data } = await supabase.from('seo_settings').insert(payload).select().maybeSingle();
+      const { data, error } = await supabase.from('seo_settings').insert(payload).select().maybeSingle();
+      if (error) { setSaveError(error.message); setSaving(false); return; }
       if (data) setEntries(prev => [...prev, data]);
     }
 
@@ -169,16 +173,23 @@ export default function SeoPage() {
     <div className="space-y-5 max-w-5xl">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-white font-arabic">{t('محرك SEO', 'SEO Engine')}</h1>
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-arabic font-semibold transition-all ${
-            saved ? 'bg-green-500 text-white' : 'bg-amber-500 text-white hover:bg-amber-600'
-          } disabled:opacity-50`}
-        >
-          <Save className="w-4 h-4" />
-          {saved ? t('تم الحفظ!', 'Saved!') : saving ? t('جاري الحفظ...', 'Saving...') : t('حفظ التغييرات', 'Save Changes')}
-        </button>
+        <div className="flex items-center gap-3">
+          {saveError && (
+            <span className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 font-arabic max-w-xs truncate">
+              {saveError}
+            </span>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-arabic font-semibold transition-all ${
+              saved ? 'bg-green-500 text-white' : 'bg-amber-500 text-white hover:bg-amber-600'
+            } disabled:opacity-50`}
+          >
+            <Save className="w-4 h-4" />
+            {saved ? t('تم الحفظ!', 'Saved!') : saving ? t('جاري الحفظ...', 'Saving...') : t('حفظ التغييرات', 'Save Changes')}
+          </button>
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-[260px_1fr] gap-5">
